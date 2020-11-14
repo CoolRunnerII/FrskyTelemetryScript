@@ -24,7 +24,6 @@
 -- GLOBAL DEFINES
 ---------------------
 --#define X9
---#define 
 -- always use loadscript() instead of loadfile()
 -- force a loadscript() on init() to compile all .lua in .luac
 --#define COMPILE
@@ -42,7 +41,9 @@
 -- enable synthetic vspeed when ekf is disabled
 --#define SYNTHVSPEED
 -- enable telemetry reset on timer 3 reset
+-- #define RESET
 -- always calculate FNV hash and play sound msg_<hash>.wav
+-- #define FNV_HASH
 -- enable telemetry logging menu option
 --#define LOGTELEMETRY
 -- enable max HDOP alert 
@@ -54,6 +55,7 @@
 -- enable popups for no telemetry data
 --#define NOTELEM_POPUP
 -- enable blinking rectangle on no telemetry
+-- #define NOTELEM_BLINK
 ---------------------
 -- DEBUG
 ---------------------
@@ -366,7 +368,6 @@ local drawLibFile = "draw7"
 
 local drawLib = nil
 local menuLib = nil
-local resetLib = nil
 
 local centerPanel = nil
 local rightPanel = nil
@@ -443,24 +444,6 @@ local transitions = {
 }
 
 
--------------------------
--- message hash support, uses 312 bytes
--------------------------
-local shortHashes = { 
-  -- 16 bytes hashes, requires 88 bytes
-  {554623408},      -- "554623408.wav", "Takeoff complete"
-  {3025044912},     -- "3025044912.wav", "SmartRTL deactiv"
-  {3956583920},     -- "3956583920.wav", "EKF2 IMU0 is usi"
-  {1309405592},     -- "1309405592.wav", "EKF3 IMU0 is usi"
-  {4091124880,true}, -- "4091124880.wav", "Reached command "
-  {3311875476,true}, -- "3311875476.wav", "Reached waypoint"
-  {1997782032,true}, -- "1997782032.wav", "Passed waypoint "
-}
-
-local shortHash = nil
-local parseShortHash = false
-local hashByteIndex = 0
-local hash = 2166136261
 
 
 local showMessages = false
@@ -644,79 +627,6 @@ local function stopTimer()
   lastTimerStart = 0
 end
 
-local function reset()
-  ---------------
-  -- BATT
-  ---------------
-  cell1min = 0
-  cell1sum = 0
-  cell2min = 0
-  cell2sum = 0
-  cell1sumFC = 0
-  cell1maxFC = 0
-  cell2sumFC = 0
-  cell1count = 0
-  cell2count = 0
-  clearTable(minmaxValues)
-  minmaxValues = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-  ---------------
-  -- TELEMETRY
-  ---------------
-  noTelemetryData = 1
-  hideNoTelemetry = false
-  ---------------
-  -- FLIGHT TIME
-  ---------------
-  lastTimerStart = 0
-  ---------------
-  -- MESSAGES
-  ---------------
-  msgBuffer = ""
-  lastMsgValue = 0
-  lastMsgTime = 0
-  lastMessage = nil
-  lastMessageSeverity = 0
-  lastMessageCount = 1
-  messageCount = 0
-  clearTable(messages)
-  messages = {}
-  ---------------
-  -- EVENTS
-  ---------------
-  lastStatusArmed = 0
-  lastGpsStatus = 0
-  lastFlightMode = 0
-  lastSimpleMode = 0
-  ---------------
-  -- BATTERY LEVELS
-  ---------------
-  batLevel = 99
-  lastBattLevel = 13
-  ---------------
-  -- TOTAL DISTANCE
-  ---------------
-  lastUpdateTotDist = 0
-  lastSpeed = 0
-  
-  -- unload DRAW
-  clearTable(drawLib)
-  drawLib = nil
-  
-  if resetLib == nil then
-    resetLib = doLibrary("reset")
-  end
-  -- reset all
-  resetLib.resetTelemetry(status,telemetry,battery,alarms,transitions)
-  -- release resources
-  clearTable(resetLib)
-  resetLib = nil
-  -- recover memory
-  collectgarbage()
-  collectgarbage()
-  -- done
-  pushMessage(6,"Telemetry reset done.")
-  playSound("yaapu")
-end
 
 
 local function processTelemetry(telemetry,DATA_ID,VALUE)
@@ -784,22 +694,6 @@ local function processTelemetry(telemetry,DATA_ID,VALUE)
           msgBuffer = msgBuffer .. string.char(c)
           collectgarbage()
           collectgarbage()
-          hash = bit32.bxor(hash, c)
-          hash = (hash * 16777619) % 2^32
-          hashByteIndex = hashByteIndex+1
-          -- check if this hash matches any 16bytes prefix hash
-          if hashByteIndex == 16 then
-            for i=1,#shortHashes
-            do
-              if hash == shortHashes[i][1] then
-                -- ok found
-                shortHash = hash
-                -- check if needs parsing
-                parseShortHash = shortHashes[i][2] == nil and false or true
-                break;
-              end
-            end
-          end
         else
           msgEnd = true;
           break;
@@ -809,25 +703,6 @@ local function processTelemetry(telemetry,DATA_ID,VALUE)
         -- push and display message
         local severity = (bit32.extract(VALUE,7,1) * 1) + (bit32.extract(VALUE,15,1) * 2) + (bit32.extract(VALUE,23,1) * 4)
         pushMessage( severity, msgBuffer)
-        -- play shortHash if found otherwise "try" the full hash
-        -- if it does not exist OpenTX will gracefully ignore it
-        playSound(tostring(shortHash == nil and hash or shortHash),true)
-        -- if required parse parameter and play it!
-        if parseShortHash then
-          local param = string.match(msgBuffer, ".*#(%d+).*")
-          collectgarbage()
-          collectgarbage()
-          if param ~= nil then
-            playNumber(tonumber(param),0)
-            collectgarbage()
-            collectgarbage()
-          end
-        end
-        -- reset hash for next string
-        parseShortHash = false
-        shortHash = nil
-        hash = 2166136261
-        hashByteIndex = 0
         msgBuffer = nil
         -- recover memory
         collectgarbage()
@@ -1086,14 +961,6 @@ local function checkLandingStatus()
 end
 
 local function calcFlightTime()
-  if model.getTimer(2).value < status.flightTime then
-    if telemetry.statusArmed == 0 then
-      reset()
-    else
-      model.setTimer(2,{value=status.flightTime})
-      pushMessage(4,"Reset ignored while armed")
-    end
-  end
   -- update local variable with timer 3 value
   status.flightTime = model.getTimer(2).value
 end
@@ -1113,16 +980,16 @@ local function setSensorValues()
     perc = math.min(math.max((1 - (battmah/battcapacity))*100,0),99)
   end
   
-  setTelemetryValue(0x060F, 0, 0, perc, 13 , 0 , "Fuel")
-  setTelemetryValue(0x021F, 0, 0, getNonZeroMin(telemetry.batt1volt,telemetry.batt2volt)*10, 1 , 2 , "VFAS")
-  setTelemetryValue(0x020F, 0, 0, telemetry.batt1current+telemetry.batt2current, 2 , 1 , "CURR")
-  setTelemetryValue(0x011F, 0, 0, telemetry.vSpeed, 5 , 1 , "VSpd")
-  setTelemetryValue(0x083F, 0, 0, telemetry.hSpeed*0.1, 4 , 0 , "GSpd")
-  setTelemetryValue(0x010F, 0, 0, telemetry.homeAlt*10, 9 , 1 , "Alt")
-  setTelemetryValue(0x082F, 0, 0, math.floor(telemetry.gpsAlt*0.1), 9 , 0 , "GAlt")
-  setTelemetryValue(0x084F, 0, 0, math.floor(telemetry.yaw), 20 , 0 , "Hdg")
-  setTelemetryValue(0x041F, 0, 0, telemetry.imuTemp, 11 , 0 , "IMUt")
-  setTelemetryValue(0x060F, 0, 1, telemetry.statusArmed*100, 0 , 0 , "ARM")
+  setTelemetryValue(0x0600, 0, 0, perc, 13 , 0 , "Fuel")
+  setTelemetryValue(0x0210, 0, 0, getNonZeroMin(telemetry.batt1volt,telemetry.batt2volt)*10, 1 , 2 , "VFAS")
+  setTelemetryValue(0x0200, 0, 0, telemetry.batt1current+telemetry.batt2current, 2 , 1 , "CURR")
+  setTelemetryValue(0x0110, 0, 0, telemetry.vSpeed, 5 , 1 , "VSpd")
+  setTelemetryValue(0x0830, 0, 0, telemetry.hSpeed*0.1, 4 , 0 , "GSpd")
+  setTelemetryValue(0x0100, 0, 0, telemetry.homeAlt*10, 9 , 1 , "Alt")
+  setTelemetryValue(0x0820, 0, 0, math.floor(telemetry.gpsAlt*0.1), 9 , 0 , "GAlt")
+  setTelemetryValue(0x0840, 0, 0, math.floor(telemetry.yaw), 20 , 0 , "Hdg")
+  setTelemetryValue(0x0410, 0, 0, telemetry.imuTemp, 11 , 0 , "IMUt")
+  setTelemetryValue(0x0600, 0, 1, telemetry.statusArmed*100, 0 , 0 , "ARM")
 end
 
 local function drawAllMessages()
@@ -1180,7 +1047,7 @@ local function checkAlarm(level,value,idx,sign,sound,delay)
         alarms[idx][2] = 0
         alarms[idx][1] = false
         alarms[idx][6] = false
-        -- status: 
+        -- status: RESET
       end
       if alarms[idx][2] > 0 and (status.flightTime ~= alarms[idx][2]) and (status.flightTime - alarms[idx][2]) >= alarms[idx][5] then
         -- enough time has passed after START
@@ -1243,11 +1110,11 @@ local function checkTransition(idx,value)
     transitions[idx][1] = value
     transitions[idx][2] = getTime()
     transitions[idx][3] = false
-    -- status: 
+    -- status: RESET
     return false
   end
   if transitions[idx][3] == false and (getTime() - transitions[idx][2]) >= transitions[idx][4] then
-    -- enough time has passed after 
+    -- enough time has passed after RESET
     transitions[idx][3] = true
     -- status: FIRE
     return true;
@@ -1597,9 +1464,6 @@ local function run(event)
       collectgarbage()
       showConfigMenu = true
     end
-  end
-  if not telemetryEnabled() and blinkon then
-    lcd.drawRectangle(0,0,128,LCD_H,showMessages and SOLID or ERASE)
   end
   loadCycle=(loadCycle+1)%8
   collectgarbage()

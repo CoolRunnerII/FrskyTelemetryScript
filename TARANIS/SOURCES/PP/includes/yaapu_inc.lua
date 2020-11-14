@@ -23,8 +23,8 @@
 ---------------------
 -- GLOBAL DEFINES
 ---------------------
-#define X9
---#define X7
+--#define X9
+#define X7
 -- always use loadscript() instead of loadfile()
 #define LOADSCRIPT
 -- force a loadscript() on init() to compile all .lua in .luac
@@ -51,9 +51,9 @@
 -- enable synthetic vspeed when ekf is disabled
 --#define SYNTHVSPEED
 -- enable telemetry reset on timer 3 reset
-#define RESET
+-- #define RESET
 -- always calculate FNV hash and play sound msg_<hash>.wav
-#define FNV_HASH
+-- #define FNV_HASH
 -- enable telemetry logging menu option
 --#define LOGTELEMETRY
 -- enable max HDOP alert 
@@ -65,7 +65,7 @@
 -- enable popups for no telemetry data
 --#define NOTELEM_POPUP
 -- enable blinking rectangle on no telemetry
-#define NOTELEM_BLINK
+-- #define NOTELEM_BLINK
 ---------------------
 -- DEBUG
 ---------------------
@@ -103,104 +103,104 @@
 ---------------------
 -- SENSORS
 ---------------------
-#define VFAS_ID 0x021F
+#define VFAS_ID 0x0210
 #define VFAS_SUBID 0
 #define VFAS_INSTANCE 0
 #define VFAS_PRECISION 2
 #define VFAS_NAME "VFAS"
 
-#define CURR_ID 0x020F
+#define CURR_ID 0x0200
 #define CURR_SUBID 0
 #define CURR_INSTANCE 0
 #define CURR_PRECISION 1
 #define CURR_NAME "CURR"
 
-#define VSpd_ID 0x011F
+#define VSpd_ID 0x0110
 #define VSpd_SUBID 0
 #define VSpd_INSTANCE 0
 #define VSpd_PRECISION 1
 #define VSpd_NAME "VSpd"
 
-#define GSpd_ID 0x083F
+#define GSpd_ID 0x0830
 #define GSpd_SUBID 0
 #define GSpd_INSTANCE 0
 #define GSpd_PRECISION 0
 #define GSpd_NAME "GSpd"
 
-#define Alt_ID 0x010F
+#define Alt_ID 0x0100
 #define Alt_SUBID 0
 #define Alt_INSTANCE 0
 #define Alt_PRECISION 1
 #define Alt_NAME "Alt"
 
-#define GAlt_ID 0x082F
+#define GAlt_ID 0x0820
 #define GAlt_SUBID 0
 #define GAlt_INSTANCE 0
 #define GAlt_PRECISION 0
 #define GAlt_NAME "GAlt"
 
-#define Hdg_ID 0x084F
+#define Hdg_ID 0x0840
 #define Hdg_SUBID 0
 #define Hdg_INSTANCE 0
 #define Hdg_PRECISION 0
 #define Hdg_NAME "Hdg"
 
-#define Fuel_ID 0x060F
+#define Fuel_ID 0x0600
 #define Fuel_SUBID 0
 #define Fuel_INSTANCE 0
 #define Fuel_PRECISION 0
 #define Fuel_NAME "Fuel"
 
-#define IMUTmp_ID 0x041F
+#define IMUTmp_ID 0x0410
 #define IMUTmp_SUBID 0
 #define IMUTmp_INSTANCE 0
 #define IMUTmp_PRECISION 0
 #define IMUTmp_NAME "IMUt"
 
-#define ARM_ID 0x060F
+#define ARM_ID 0x0600
 #define ARM_SUBID 0
 #define ARM_INSTANCE 1
 #define ARM_PRECISION 0
 #define ARM_NAME "ARM"
 
-#define ASpd_ID 0x0AF
+#define ASpd_ID 0x0A0
 #define ASpd_SUBID 0
 #define ASpd_INSTANCE 0
 #define ASpd_PRECISION 0
 #define ASpd_NAME "ASpd"
 
-#define BAlt_ID 0x010F
+#define BAlt_ID 0x0100
 #define BAlt_SUBID 0
 #define BAlt_INSTANCE 1
 #define BAlt_PRECISION 1
 #define BAlt_NAME "BAlt"
 
 -- Throttle and RC use RPM sensor IDs
-#define Thr_ID 0x050F
+#define Thr_ID 0x0500
 #define Thr_SUBID 0
 #define Thr_INSTANCE 0
 #define Thr_PRECISION 0
 #define Thr_NAME "Thr"
 
-#define WPD_ID 0x082F
+#define WPD_ID 0x0820
 #define WPD_SUBID 0
 #define WPD_INSTANCE 10
 #define WPD_PRECISION 0
 #define WPD_NAME "WPD"
 
-#define WPX_ID 0x082F
+#define WPX_ID 0x0820
 #define WPX_SUBID 0
 #define WPX_INSTANCE 11
 #define WPX_PRECISION 0
 #define WPX_NAME "WPX"
 
-#define WPN_ID 0x050F
+#define WPN_ID 0x0500
 #define WPN_SUBID 0
 #define WPN_INSTANCE 10
 #define WPN_PRECISION 0
 #define WPN_NAME "WPN"
 
-#define WPB_ID 0x084F
+#define WPB_ID 0x0840
 #define WPB_SUBID 0
 #define WPB_INSTANCE 10
 #define WPB_PRECISION 0
